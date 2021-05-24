@@ -1,1 +1,1 @@
-# EDA-NBA
+# Exploratory Data Analysis Basketball - NBA Regular Season
