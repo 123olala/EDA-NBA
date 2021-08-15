@@ -289,7 +289,7 @@ selected_name = st.sidebar.text_input('Player name')
 #1.Introduction
 st.header('I. Introduction')
 st.markdown("""
-This project performs simple web scraping, data aggregation and cleaning, data analysis visualization, and hypothesizing of NBA player stats data. Then building a machine learning model to predict the salary and playing position of NBA player!\n
+This project performs simple web scraping, data aggregation and cleaning, data analysis visualization, and hypothesizing of NBA player stats data. Then building a machine learning model to predict the salary of NBA player!\n
 * **Python libraries:** pandas, matplotlib, seaborn, numpy, sklearn, scipy\
     , streamlit
 * **Data source:** [Basketball-reference.com](https://www.basketball-reference.com/),\
@@ -509,8 +509,6 @@ st.code('''"coming soon..."''',language='python')
 #6. Machine Learning: Predict salary
 st.header('VI. Machine Learning: (FOR FUNNY)')
 
-st.subheader("0. Instructions")
-st.write('The table below shows 9 questions that you need to write down your information to get the result. Each information is splitted by a comma (example: 4,5,3,6,8,4,7,9,2). **Have fun!**')
 #Model
 scaler_clf = joblib.load('scaler_clf.sav')
 k_nearest = joblib.load('k_nearest.sav')
@@ -534,7 +532,7 @@ df_quest = pd.DataFrame(['What is your scoring ability? (from 1 to 10)',\
 df_quest.columns = ['Provided Information']
 st.dataframe(df_quest)
 #Input user
-input_user = st.text_input('Provided information split by comma')
+input_user = st.text_input('Provided information split by commas')
 att_user = input_user.split(',')
 
 st.subheader("1. What is your position if you play basketball?")
@@ -544,14 +542,13 @@ if st.button("*Oki let's discover your position*"):
     if len(input_user) != 0:
         try:
             att_num_user = [int(i) for i in att_user]
+            if not check_list(att_num_user):
+                st.write('**Wrong User Input**')
+            else:
+                user_position = model.predict(scaler_clf.transform(np.array(att_num_user).reshape(1,-1)))
+                st.write(f'You seem like a good fit for **{dict_position[user_position[0]]}**.')
         except:
-            st.write('**Wrong User Input**')
-
-        if not check_list(att_num_user):
-            st.write('**Wrong User Input**')
-        else:
-            user_position = model.predict(scaler_clf.transform(np.array(att_num_user).reshape(1,-1)))
-            st.write(f'You seem like a good fit for **{dict_position[user_position[0]]}**.')
+            st.write('**Wrong User Input**')      
     else:
         st.write('**Wrong User Input**')
 
@@ -560,13 +557,12 @@ if st.button("*Oki let's predict your salary*"):
     if len(input_user) != 0:
         try:
             att_num_user = [int(i) for i in att_user]
+            if not check_list(att_num_user):
+                st.write('**Wrong User Input**')
+            else:
+                user_salary = rf_reg.predict(scaler_reg.transform(np.array(att_num_user).reshape(1,-1)))
+                st.write(f'You maybe receive **{np.round(user_salary[0]/1000000,3)} millions $** when compete in NBA.')
         except:
             st.write('**Wrong User Input**')
-
-        if not check_list(att_num_user):
-            st.write('**Wrong User Input**')
-        else:
-            user_salary = rf_reg.predict(scaler_reg.transform(np.array(att_num_user).reshape(1,-1)))
-            st.write(f'You maybe receive **{np.round(user_salary[0]/1000000,3)} millions $** when compete in NBA.')
     else:
         st.write('**Wrong User Input**')
