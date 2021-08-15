@@ -10,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 import unicodedata
 from PIL import Image
 import warnings
+import joblib
 warnings.filterwarnings("ignore")
 
 #Tune the visualization
@@ -245,6 +246,17 @@ def scale_10(num,df,label):
         return 9
     return 10
 
+#Category position
+def check_list(li):
+    if len(li) != 9:
+        return False
+    if li[-1] > 3:
+        return False
+    for i in li:
+        if (i > 10) or (i < 1):
+            return False
+    return True
+
 #Frontend Content
 #Header
 st.title('NBA Player Stats Data Exploratory') #Name of web app
@@ -325,28 +337,29 @@ if selected_year >= 1990:
 st.header('IV. Data analysis and visualization')
 
 #TSNE clustering
-st.subheader('1. Position Clustering Visualization using t-SNE')
-tnse_df = playerstats[(playerstats['G']>15) & (playerstats['MP']>5)][['Player','Salary ($)','PTS','Pos','FG%','FGA','3P%','FT%','TRB%','AST%','STL%','BLK%']]
-position_mapping = {'PG':'Guard','SG':'Guard','SF':'Forward','PF':'Forward','C':'Center'}
-tnse_df['Pos'] = tnse_df['Pos'].map(position_mapping)
-tsne_att = tnse_df.drop(['Player','Salary ($)','PTS','Pos'],axis=1)
-for column in tsne_att.columns:
-    tsne_att[column] = tsne_att[column].apply(scale_10,args=(tsne_att,column))
-tsne = TSNE(random_state=3107)
-tsne_rep = tsne.fit_transform(tsne_att)
-fig,ax = themes_plot()
-sns.scatterplot(x=tsne_rep[:,0],y=tsne_rep[:,1],hue=tnse_df['Pos'],palette='Set2')
-st.pyplot(fig)
+st.subheader('0. Player Position Clustering Visualization using t-SNE')
+if st.button('Show t-SNE representation'):
+    tnse_df = playerstats[(playerstats['G']>15) & (playerstats['MP']>5)][['Player','Salary ($)','PTS','Pos','FG%','FGA','3P%','FT%','TRB%','AST%','STL%','BLK%']]
+    position_mapping = {'PG':'Guard','SG':'Guard','SF':'Forward','PF':'Forward','C':'Center'}
+    tnse_df['Pos'] = tnse_df['Pos'].map(position_mapping)
+    tsne_att = tnse_df.drop(['Player','Salary ($)','PTS','Pos'],axis=1)
+    for column in tsne_att.columns:
+        tsne_att[column] = tsne_att[column].apply(scale_10,args=(tsne_att,column))
+    tsne = TSNE(random_state=3107)
+    tsne_rep = tsne.fit_transform(tsne_att)
+    fig,ax = themes_plot()
+    sns.scatterplot(x=tsne_rep[:,0],y=tsne_rep[:,1],hue=tnse_df['Pos'],palette='Set2')
+    st.pyplot(fig)
 
 #Correlation matrix
-st.subheader('2. Correlation matrix')
+st.subheader('1. Correlation matrix')
 corr_matrix = playerstats.corr()
 fig,ax = themes_plot((12,6))
 sns.heatmap(corr_matrix,yticklabels=False,cbar=True,cmap='Blues')
 st.pyplot(fig)
 
 #Lineplot
-st.subheader('3. NBA gameplay trend')
+st.subheader('2. NBA gameplay trend')
 trend = pd.read_csv('trend.csv')
 fig,ax = themes_plot()
 sns.lineplot(x='Year',y='2PA',data = trend,color=red,label='2 Point')
@@ -357,7 +370,7 @@ plt.legend()
 st.pyplot(fig)
 
 #Histplot
-st.subheader('4. Distribution of all attributes')
+st.subheader('3. Distribution of all attributes')
 stats = list(playerstats.columns)[4:]
 stats = stats + ['Age']
 selected_stats = st.selectbox('Attribute',stats)
@@ -371,10 +384,10 @@ plt.legend()
 st.pyplot(fig)  
 
 #Barplot
-st.subheader('5. Does a good scorer necessarily have to be a good 3-point maker?')
+st.subheader('4. Does a good scorer necessarily have to be a good 3-point maker?')
 fig,ax = visualize_top20point()
 
-st.subheader('6. Which is the youngest team in the NBA?')
+st.subheader('5. Which is the youngest team in the NBA?')
 nba_age = playerstats[playerstats['Tm'] != 'TOT'].groupby('Tm')['Age'].mean().sort_values()
 range_yaxis = range(1,len(nba_age)+1)
 fig,ax = themes_plot((12,10))
@@ -386,7 +399,7 @@ ax.set_ylabel('Team')
 st.pyplot(fig)
 
 #Explicit plot
-st.subheader('7. Explicit team analysis')
+st.subheader('6. Explicit team analysis')
 team = sorted(playerstats['Tm'].unique())
 selected_team_ex = st.selectbox('Team',team,key='hist')
     #Histplot
@@ -409,7 +422,7 @@ for i in range(amount):
     st.markdown(f'* {star.values[i]} : {point.values[i]} point per game.')
 
 #Lineplot
-st.subheader('8. Does player salary depend on age?')
+st.subheader('7. Does player salary depend on age?')
 salary_age = playerstats.groupby('Age')['Salary ($)'].mean()
 fig,ax = themes_plot()
 sns.lineplot(x=salary_age.index,y=salary_age.values,color=np.random.choice([red,green]))
@@ -417,7 +430,7 @@ ax.set_ylabel('Salary')
 st.pyplot(fig)
 
 #Countplot
-st.subheader('9. Player position ratio')
+st.subheader('8. Player position ratio')
 fig,ax = themes_plot()
 sns.countplot(x='Pos',data=playerstats,palette='Set2')
 ax.set_xlabel('Position')
@@ -425,14 +438,14 @@ ax.set_ylabel('')
 st.pyplot(fig)
 
 #Boxplot
-st.subheader('10. Does player salary depend on their position?')
+st.subheader('9. Does player salary depend on their position?')
 fig,ax = themes_plot()
 sns.boxplot(x='Pos',y='Salary ($)',data=playerstats,palette='Set2')
 ax.set_xlabel('Position')
 st.pyplot(fig)
 
 #Boxplot
-st.subheader('11. Do forwards make more points than guards?')
+st.subheader('10. Do forwards make more points than guards?')
 fig,ax = themes_plot()
 sns.boxplot(x='Pos',y='PTS',data=playerstats,palette='Set2')
 ax.set_xlabel('Position')
@@ -440,7 +453,7 @@ ax.set_ylabel('Point Per Game')
 st.pyplot(fig)
 
 #Scatterplot
-st.subheader('12. Is a good offensive rebound player good at defensive rebound?')
+st.subheader('11. Is a good offensive rebound player good at defensive rebound?')
 fig,ax = themes_plot()
 sns.scatterplot(x='ORB',y='DRB',data=playerstats,hue='Pos',palette='Set2')
 ax.set_xlabel('Offensive Rebound')
@@ -448,7 +461,7 @@ ax.set_ylabel('Defensive Rebound')
 st.pyplot(fig)
 
 #Scatterplot
-st.subheader('13. Is a good steal player good at block?')
+st.subheader('12. Is a good steal player good at block?')
 fig,ax = themes_plot()
 sns.scatterplot(x='STL%',y='BLK%',data=playerstats,hue='Pos',palette='Set2')
 ax.set_xlabel('Steal percentage contribution')
@@ -456,13 +469,13 @@ ax.set_ylabel('Block percentage contribution')
 st.pyplot(fig)
 
 #Scatterplot
-st.subheader('14. Box Plus Minus (BPM) versus Value Over Replacement Player (VORP)?')
+st.subheader('13. Box Plus Minus (BPM) versus Value Over Replacement Player (VORP)?')
 fig,ax = themes_plot()
 sns.scatterplot(x='BPM',y='VORP',data=playerstats,hue='Pos',palette='Set2')
 st.pyplot(fig)
 
 #Scatterplot
-st.subheader('15. How Point Per Game affects Winshare (WS), Box Plus Minus (BPM), Value Over Replacement Player (VORP)?')
+st.subheader('14. How Point Per Game affects Winshare (WS), Box Plus Minus (BPM), Value Over Replacement Player (VORP)?')
 
 fig,ax = themes_plot()
 sns.scatterplot(x='PTS',y='WS',data=playerstats,hue='Pos',palette='Set2')
@@ -483,17 +496,75 @@ ax.set_title('Point Per Game vs Value Over Replacement Player')
 st.pyplot(fig)
 
 #Box plot
-st.subheader('16. Are Point-Guards the best playmarker?')
+st.subheader('15. Are Point-Guards the best playmarker?')
 fig,ax = themes_plot()
 sns.boxplot(x='Pos',y='AST%',data=playerstats,palette='Set2')
 ax.set_xlabel('Position')
 ax.set_ylabel('Assist percentage contribution')
 st.pyplot(fig)
+
 #5. Hypothesis testing
 st.header('V. Hypothesis Testing')
 st.code('''"coming soon..."''',language='python')
 #6. Machine Learning: Predict salary
 st.header('VI. Machine Learning: (FOR FUNNY)')
-st.code('''"coming soon..."''',language='python')
 
+#Model
+scaler_clf = joblib.load('scaler_clf.sav')
+k_nearest = joblib.load('k_nearest.sav')
+rf_clf = joblib.load('rf_clf.sav')
+svc = joblib.load('svc_clf.sav')
+xgb_clf = joblib.load('xgb_clf.sav')
+rf_reg = joblib.load('rf_reg.sav')
+scaler_reg = joblib.load('scaler_reg.sav')
 
+dict_model = {'XGBoost':xgb_clf, 'Support Vector Machine':svc, 'Random Forest':rf_clf, 'k-Nearest Neighbor':k_nearest}
+dict_position = {'PG':'Point Guard', 'SG':'Shooting Guard','SF':'Small Forward','PF':'Power Forward','C':'Center'}
+df_quest = pd.DataFrame(['What is your scoring ability? (from 1 to 10)',\
+    'What is your shooting accuracy? (from 1 to 10)',\
+        'What is your shooting frequency? (from 1 to 10)',\
+            'What is your 3-point shooting ability? (from 1 to 10)',\
+                'What is your rebound ability? (from 1 to 10)',\
+                    'What is your assist ability? (from 1 to 10)',\
+                        'What is your steal ability? (from 1 to 10)',\
+                            'What is your block ability? (from 1 to 10)',\
+                                'How do you feel about your height? (from 1 to 3)'])
+df_quest.columns = ['Provided Information']
+st.dataframe(df_quest)
+#Input user
+input_user = st.text_input('Provided information split by commas')
+att_user = input_user.split(',')
+
+st.subheader("1. What is your position if you play basketball?")
+model_list = ['XGBoost','Support Vector Machine','Random Forest','k-Nearest Neighbor']
+model = dict_model[st.selectbox('Choose algorithm:',model_list)]
+if st.button("*Oki let's discover your position*"):
+    if len(input_user) != 0:
+        try:
+            att_num_user = [int(i) for i in att_user]
+        except:
+            st.write('**Wrong User Input**')
+
+        if not check_list(att_num_user):
+            st.write('**Wrong User Input**')
+        else:
+            user_position = model.predict(scaler_clf.transform(np.array(att_num_user).reshape(1,-1)))
+            st.write(f'You seem like a good fit for **{dict_position[user_position[0]]}**.')
+    else:
+        st.write('**Wrong User Input**')
+
+st.subheader("2. What is your salary if you compete in NBA?")
+if st.button("*Oki let's predict your salary*"):
+    if len(input_user) != 0:
+        try:
+            att_num_user = [int(i) for i in att_user]
+        except:
+            st.write('**Wrong User Input**')
+
+        if not check_list(att_num_user):
+            st.write('**Wrong User Input**')
+        else:
+            user_salary = rf_reg.predict(scaler_reg.transform(np.array(att_num_user).reshape(1,-1)))
+            st.write(f'You maybe receive **{np.round(user_salary[0]/1000000,3)} millions $** when compete in NBA.')
+    else:
+        st.write('**Wrong User Input**')
