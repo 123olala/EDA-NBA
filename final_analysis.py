@@ -5,8 +5,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns 
 import numpy as np
 import matplotlib.image as img 
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
 import unicodedata
 from PIL import Image
+import warnings
+warnings.filterwarnings("ignore")
 
 #Tune the visualization
 pd.set_option('display.precision', 2)
@@ -219,6 +223,28 @@ def visualize_top20point(label='PTS'):
 
     return fig,ax
 
+#Scale data to range 10
+def scale_10(num,df,label):
+    if num < df[label].quantile(0.1):
+        return 1
+    elif num < df[label].quantile(0.2):
+        return 2
+    elif num < df[label].quantile(0.3):
+        return 3
+    elif num < df[label].quantile(0.4):
+        return 4
+    elif num < df[label].quantile(0.5):
+        return 5
+    elif num < df[label].quantile(0.6):
+        return 6
+    elif num < df[label].quantile(0.7):
+        return 7
+    elif num < df[label].quantile(0.8):
+        return 8
+    elif num < df[label].quantile(0.9):
+        return 9
+    return 10
+
 #Frontend Content
 #Header
 st.title('NBA Player Stats Data Exploratory') #Name of web app
@@ -298,15 +324,29 @@ if selected_year >= 1990:
 #4. Data analysis and visualization
 st.header('IV. Data analysis and visualization')
 
+#TSNE clustering
+st.subheader('1. Position Clustering Visualization using t-SNE')
+tnse_df = playerstats[(playerstats['G']>15) & (playerstats['MP']>5)][['Player','Salary ($)','PTS','Pos','FG%','FGA','3P%','FT%','TRB%','AST%','STL%','BLK%']]
+position_mapping = {'PG':'Guard','SG':'Guard','SF':'Forward','PF':'Forward','C':'Center'}
+tnse_df['Pos'] = tnse_df['Pos'].map(position_mapping)
+tsne_att = tnse_df.drop(['Player','Salary ($)','PTS','Pos'],axis=1)
+for column in tsne_att.columns:
+    tsne_att[column] = tsne_att[column].apply(scale_10,args=(tsne_att,column))
+tsne = TSNE(random_state=3107)
+tsne_rep = tsne.fit_transform(tsne_att)
+fig,ax = themes_plot()
+sns.scatterplot(x=tsne_rep[:,0],y=tsne_rep[:,1],hue=tnse_df['Pos'],palette='Set2')
+st.pyplot(fig)
+
 #Correlation matrix
-st.subheader('0. Correlation matrix')
+st.subheader('2. Correlation matrix')
 corr_matrix = playerstats.corr()
 fig,ax = themes_plot((12,6))
-ax = sns.heatmap(corr_matrix,yticklabels=False,cbar=True,cmap='Blues')
+sns.heatmap(corr_matrix,yticklabels=False,cbar=True,cmap='Blues')
 st.pyplot(fig)
 
 #Lineplot
-st.subheader('1. NBA gameplay trend')
+st.subheader('3. NBA gameplay trend')
 trend = pd.read_csv('trend.csv')
 fig,ax = themes_plot()
 sns.lineplot(x='Year',y='2PA',data = trend,color=red,label='2 Point')
@@ -317,7 +357,7 @@ plt.legend()
 st.pyplot(fig)
 
 #Histplot
-st.subheader('2. Distribution of all attributes')
+st.subheader('4. Distribution of all attributes')
 stats = list(playerstats.columns)[4:]
 stats = stats + ['Age']
 selected_stats = st.selectbox('Attribute',stats)
@@ -331,10 +371,10 @@ plt.legend()
 st.pyplot(fig)  
 
 #Barplot
-st.subheader('3. Does a good scorer necessarily have to be a good 3-point maker?')
+st.subheader('5. Does a good scorer necessarily have to be a good 3-point maker?')
 fig,ax = visualize_top20point()
 
-st.subheader('4. Which is the youngest team in the NBA?')
+st.subheader('6. Which is the youngest team in the NBA?')
 nba_age = playerstats[playerstats['Tm'] != 'TOT'].groupby('Tm')['Age'].mean().sort_values()
 range_yaxis = range(1,len(nba_age)+1)
 fig,ax = themes_plot((12,10))
@@ -346,7 +386,7 @@ ax.set_ylabel('Team')
 st.pyplot(fig)
 
 #Explicit plot
-st.subheader('5. Explicit team analysis')
+st.subheader('7. Explicit team analysis')
 team = sorted(playerstats['Tm'].unique())
 selected_team_ex = st.selectbox('Team',team,key='hist')
     #Histplot
@@ -369,7 +409,7 @@ for i in range(amount):
     st.markdown(f'* {star.values[i]} : {point.values[i]} point per game.')
 
 #Lineplot
-st.subheader('6. Does player salary depend on age?')
+st.subheader('8. Does player salary depend on age?')
 salary_age = playerstats.groupby('Age')['Salary ($)'].mean()
 fig,ax = themes_plot()
 sns.lineplot(x=salary_age.index,y=salary_age.values,color=np.random.choice([red,green]))
@@ -377,7 +417,7 @@ ax.set_ylabel('Salary')
 st.pyplot(fig)
 
 #Countplot
-st.subheader('7. Player position ratio')
+st.subheader('9. Player position ratio')
 fig,ax = themes_plot()
 sns.countplot(x='Pos',data=playerstats,palette='Set2')
 ax.set_xlabel('Position')
@@ -385,14 +425,14 @@ ax.set_ylabel('')
 st.pyplot(fig)
 
 #Boxplot
-st.subheader('8. Does player salary depend on their position?')
+st.subheader('10. Does player salary depend on their position?')
 fig,ax = themes_plot()
 sns.boxplot(x='Pos',y='Salary ($)',data=playerstats,palette='Set2')
 ax.set_xlabel('Position')
 st.pyplot(fig)
 
 #Boxplot
-st.subheader('9. Do forwards make more points than guards?')
+st.subheader('11. Do forwards make more points than guards?')
 fig,ax = themes_plot()
 sns.boxplot(x='Pos',y='PTS',data=playerstats,palette='Set2')
 ax.set_xlabel('Position')
@@ -400,7 +440,7 @@ ax.set_ylabel('Point Per Game')
 st.pyplot(fig)
 
 #Scatterplot
-st.subheader('10. Is a good offensive rebound player good at defensive rebound?')
+st.subheader('12. Is a good offensive rebound player good at defensive rebound?')
 fig,ax = themes_plot()
 sns.scatterplot(x='ORB',y='DRB',data=playerstats,hue='Pos',palette='Set2')
 ax.set_xlabel('Offensive Rebound')
@@ -408,7 +448,7 @@ ax.set_ylabel('Defensive Rebound')
 st.pyplot(fig)
 
 #Scatterplot
-st.subheader('11. Is a good steal player good at block?')
+st.subheader('13. Is a good steal player good at block?')
 fig,ax = themes_plot()
 sns.scatterplot(x='STL%',y='BLK%',data=playerstats,hue='Pos',palette='Set2')
 ax.set_xlabel('Steal percentage contribution')
@@ -416,13 +456,13 @@ ax.set_ylabel('Block percentage contribution')
 st.pyplot(fig)
 
 #Scatterplot
-st.subheader('12. Box Plus Minus (BPM) versus Value Over Replacement Player (VORP)?')
+st.subheader('14. Box Plus Minus (BPM) versus Value Over Replacement Player (VORP)?')
 fig,ax = themes_plot()
 sns.scatterplot(x='BPM',y='VORP',data=playerstats,hue='Pos',palette='Set2')
 st.pyplot(fig)
 
 #Scatterplot
-st.subheader('13. How Point Per Game affects Winshare (WS), Box Plus Minus (BPM), Value Over Replacement Player (VORP)?')
+st.subheader('15. How Point Per Game affects Winshare (WS), Box Plus Minus (BPM), Value Over Replacement Player (VORP)?')
 
 fig,ax = themes_plot()
 sns.scatterplot(x='PTS',y='WS',data=playerstats,hue='Pos',palette='Set2')
@@ -443,7 +483,7 @@ ax.set_title('Point Per Game vs Value Over Replacement Player')
 st.pyplot(fig)
 
 #Box plot
-st.subheader('14. Are Point-Guards the best playmarker?')
+st.subheader('16. Are Point-Guards the best playmarker?')
 fig,ax = themes_plot()
 sns.boxplot(x='Pos',y='AST%',data=playerstats,palette='Set2')
 ax.set_xlabel('Position')
