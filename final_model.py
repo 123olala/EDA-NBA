@@ -510,7 +510,7 @@ st.code('''"coming soon..."''',language='python')
 st.header('VI. Machine Learning: (FOR FUNNY)')
 
 st.subheader("0. Instructions")
-st.write('The table below shows 9 questions that you need to write down your information to get the result. Each information is splitted by a commas. **Have fun!**')
+st.write('The table below shows 9 questions that you need to write down your information to get the result. Each information is splitted by a comma (example: 4,5,3,6,8,4,7,9,2). **Have fun!**')
 #Model
 scaler_clf = joblib.load('scaler_clf.sav')
 k_nearest = joblib.load('k_nearest.sav')
@@ -534,7 +534,7 @@ df_quest = pd.DataFrame(['What is your scoring ability? (from 1 to 10)',\
 df_quest.columns = ['Provided Information']
 st.dataframe(df_quest)
 #Input user
-input_user = st.text_input('Provided information split by commas')
+input_user = st.text_input('Provided information split by comma')
 att_user = input_user.split(',')
 
 st.subheader("1. What is your position if you play basketball?")
