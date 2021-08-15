@@ -7,3 +7,4 @@ base58==2.1.0
 lxml==4.6.3
 scikit-learn==0.24.2
 scipy==1.7.0
+joblib==1.0.1
