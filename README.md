@@ -1,1 +1,1 @@
-# Exploratory Data Analysis Basketball - NBA Regular Season
+# Exploratory Data Analysis And Machine Learning - NBA Regular Season
