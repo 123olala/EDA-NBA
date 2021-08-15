@@ -289,7 +289,7 @@ selected_name = st.sidebar.text_input('Player name')
 #1.Introduction
 st.header('I. Introduction')
 st.markdown("""
-This project performs simple web scraping, data aggregation and cleaning, data analysis visualization, and hypothesizing of NBA player stats data. Then building a machine learning model to predict the salary of NBA player!\n
+This project performs simple web scraping, data aggregation and cleaning, data analysis visualization, and hypothesizing of NBA player stats data. Then building a machine learning model to predict the salary and playing position of NBA player!\n
 * **Python libraries:** pandas, matplotlib, seaborn, numpy, sklearn, scipy\
     , streamlit
 * **Data source:** [Basketball-reference.com](https://www.basketball-reference.com/),\
@@ -509,6 +509,8 @@ st.code('''"coming soon..."''',language='python')
 #6. Machine Learning: Predict salary
 st.header('VI. Machine Learning: (FOR FUNNY)')
 
+st.subheader("0. Instructions")
+st.write('The table below shows 9 questions that you need to write down your information to get the result. Each information is splitted by a commas. **Have fun!**')
 #Model
 scaler_clf = joblib.load('scaler_clf.sav')
 k_nearest = joblib.load('k_nearest.sav')
