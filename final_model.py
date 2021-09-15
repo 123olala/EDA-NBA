@@ -11,6 +11,9 @@ import unicodedata
 from PIL import Image
 import warnings
 import joblib
+from scipy.stats import ttest_ind
+from scipy.stats import pearsonr
+
 warnings.filterwarnings("ignore")
 
 #Tune the visualization
@@ -69,7 +72,7 @@ def load_advanced(year):
     ad['Player'] = ad['Player'].str.strip()
 
     return ad
-
+ 
 def load_possessions(year):
     """ Return DataFrame of NBA Player Stats: Per 100 Possessions """ 
 
@@ -257,9 +260,33 @@ def check_list(li):
             return False
     return True
 
+#Hypothesis
+def hypothesis_score_by_position(df):
+    hypo_df = df[(df['G'] >= 27) & (df['MP'] >= 12) & (df['Tm'] != 'TOT')]
+    pos_mapping = {'C':'frontcourt','PF':'frontcourt','SF':'frontcourt','PG':'backcourt','SG':'backcourt'}
+    hypo_df.loc[:,'Pos'] = hypo_df['Pos'].map(pos_mapping)
+    
+    front_score = hypo_df.loc[hypo_df['Pos'] == 'frontcourt']['PTS']
+    back_score = hypo_df.loc[hypo_df['Pos'] == 'backcourt']['PTS']
+
+    statistics,p_val = ttest_ind(front_score, back_score,alternative='less')
+    return front_score.mean(), back_score.mean(), statistics, p_val
+
+def hypothesis_3Pscore_by_position(df):
+    hypo_df = df[(df['G'] >= 27) & (df['MP'] >= 12) & (df['Tm'] != 'TOT')]
+    pos_mapping = {'C':'frontcourt','PF':'frontcourt','SF':'frontcourt','PG':'backcourt','SG':'backcourt'}
+    hypo_df.loc[:,'Pos'] = hypo_df['Pos'].map(pos_mapping)
+    
+    front_score = hypo_df.loc[hypo_df['Pos'] == 'frontcourt']['3P%']
+    back_score = hypo_df.loc[hypo_df['Pos'] == 'backcourt']['3P%']
+
+    statistics,p_val = ttest_ind(front_score, back_score,alternative='less')
+    return front_score.mean(), back_score.mean(), statistics, p_val
+    
+
 #Frontend Content
 #Header
-st.title('NBA Player Stats Data Exploratory') #Name of web app
+st.title('Applied Data Science on Sport: NBA Regular Season Statistics') #Name of web app
 st.code('''"made by cao long ạ"\n"DOB: 20/11/2001"\n"Univeristy of Economics and Law"\n"Class: 14"''',language='python') #Introduction
 background = Image.open('nba.jpeg')
 st.image(background,caption='NBA Allstar')
@@ -289,7 +316,7 @@ selected_name = st.sidebar.text_input('Player name')
 #1.Introduction
 st.header('I. Introduction')
 st.markdown("""
-This project performs simple web scraping, data aggregation and cleaning, data analysis visualization, and hypothesizing of NBA player stats data. Then building a machine learning model to predict the salary of NBA player!\n
+This project performs simple web scraping, data aggregation and cleaning, data analysis visualization, and hypothesizing of NBA player stats data. Then building a machine learning model to predict the salary of NBA player and classify players position!\n
 * **Python libraries:** pandas, matplotlib, seaborn, numpy, sklearn, scipy\
     , streamlit
 * **Data source:** [Basketball-reference.com](https://www.basketball-reference.com/),\
@@ -505,7 +532,69 @@ st.pyplot(fig)
 
 #5. Hypothesis testing
 st.header('V. Hypothesis Testing')
-st.code('''"coming soon..."''',language='python')
+# st.code('''"coming soon..."''',language='python')
+hypo_df = playerstats[(playerstats['G'] >= 27) & (playerstats['MP'] >= 12) & (playerstats['Tm'] != 'TOT')]
+#5.1
+st.subheader('1. Do guards score more than forwards on average?')
+st.code('''H0: mean_score(forwards) >= mean_score(guards)\
+    \n\
+H1: mean_score(forwards) < mean_score(guards)''',language='python')
+forwards_score, guards_score, statistics, p_val = hypothesis_score_by_position(hypo_df)
+st.write(f'- Mean score of forwards (Observation): {np.round(forwards_score,2)}')
+st.write(f'- Mean score of guards (Observation): {np.round(guards_score,2)}')
+st.write(f'- p value: {p_val}')
+if p_val <= 0.05:
+    st.write("At 5% significance, we reject the null hypothesis.")
+    st.write('=> Guards are significantly better at scoring than Forwards.')
+else:
+    st.write("At 5% significance, we cannot reject the null hypothesis.")
+    st.write('=> There is not enough statistical evidence that Guards are significantly better at scoring than Forwards.')
+#5.2
+st.subheader('2. Do guards make 3-point more accurate than forwards on average?')
+st.code('''H0: mean_3P_accuracy(forwards) >= mean_3P_accuracy(guards)\
+    \n\
+H1: mean_3P_accuracy(forwards) < mean_3P_accuracy(guards)''',language='python')
+forwards3P_accuracy, guards3P_accuracy, statistics, p_val = hypothesis_3Pscore_by_position(hypo_df)
+st.write(f'- Mean 3-point accuracy of forwards (Observation): {np.round(forwards3P_accuracy,2)}')
+st.write(f'- Mean 3-point accuracy of guards (Observation): {np.round(guards3P_accuracy,2)}')
+st.write(f'- p value: {p_val}')
+if p_val <= 0.05:
+    st.write("At 5% significance, we reject the null hypothesis.")
+    st.write('=> Guards are significantly better at scoring 3-point than Forwards.')
+else:
+    st.write("At 5% significance, we cannot reject the null hypothesis.")
+    st.write('=> There is not enough statistical evidence that Guards are significantly better at scoring 3-point than Forwards.')
+#5.3
+st.subheader('3.  Does a good scorer is also good at scoring 3-point?')
+st.code('''H0: 3-point accuracy and scoring ability are independent.\
+    \n\
+H1: 3-point accuracy and scoring ability are dependent.''',language='python')
+correlation,p_val = pearsonr(hypo_df['PTS'], hypo_df['3P%'])
+st.write(f'- Correlation: {correlation}')
+st.write(f'- p value: {p_val}')
+if p_val <= 0.05:
+    if correlation >= 0.2:
+        st.write("=> At 5% significance, there is a relationship between 3-point accuracy and scoring ability.")
+    else:
+        st.write("=> At 5% significance, there is a very week relationship between 3-point accuracy and scoring ability.")
+else:
+    st.write("=> At 5% significance, we cannot conclude that there is a relationship between 3-point accuracy and scoring ability.")
+#5.4
+st.subheader('4. Does the salary of players really dependent on their effectiveness on the court?')
+st.code('''H0: Salary and player effectiveness are independent.\
+    \n\
+H1: Salary and player effectiveness are dependent.''',language='python')
+correlation,p_val = pearsonr(hypo_df.dropna()['BPM'], hypo_df.dropna()['Salary ($)'])
+st.write(f'- Correlation: {correlation}')
+st.write(f'- p value: {p_val}')
+if p_val <= 0.05:
+    if correlation >= 0.2:
+        st.write("=> At 5% significance, there is a relationship between Salary and player effectiveness.")
+    else:
+        st.write("=> At 5% significance, there is a very week relationship between Salary and player effectiveness.")
+else:
+    st.write("=> At 5% significance, we cannot conclude that there is a relationship between Salary and player effectiveness.")
+
 #6. Machine Learning: Predict salary
 st.header('VI. Machine Learning: (FOR FUNNY)')
 
